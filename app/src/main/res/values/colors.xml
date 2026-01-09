@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="mantra_primary">#0F172A</color>
+    <color name="mantra_accent">#3B82F6</color>
+    <color name="mantra_bg">#F1F5F9</color>
+    <color name="status_connected">#10B981</color>
+    <color name="status_disconnected">#EF4444</color>
+    <color name="text_primary">#334155</color>
+    <color name="text_secondary">#64748B</color>
+    <color name="text_header">#F8FAFC</color>
+    <color name="dadada">#0C0B0B</color>
+</resources>
