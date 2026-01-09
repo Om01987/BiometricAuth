@@ -26,7 +26,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="New Enrollment"
+            android:text="Capture Screen"
             android:textColor="@color/white"
             android:textSize="20sp"
             android:textStyle="bold"
@@ -49,83 +49,123 @@
         app:layout_constraintTop_toBottomOf="@id/header"/>
 
     <androidx.cardview.widget.CardView
+        android:id="@+id/cardUserInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="@color/white"
+        app:layout_constraintTop_toBottomOf="@id/txtDeviceStatus">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/txtUserId"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="User ID: -"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/txtUserName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Waiting for input..."
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
         android:id="@+id/cardPreview"
-        android:layout_width="220dp"
-        android:layout_height="280dp"
-        android:layout_marginTop="32dp"
+        android:layout_width="200dp"
+        android:layout_height="260dp"
+        android:layout_marginTop="16dp"
         app:cardCornerRadius="16dp"
-        app:cardElevation="6dp"
+        app:cardElevation="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/txtDeviceStatus">
+        app:layout_constraintTop_toBottomOf="@id/cardUserInfo">
 
         <ImageView
             android:id="@+id/imgFingerPreview"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:src="@android:drawable/ic_menu_gallery"
+            android:src="@drawable/ic_launcher_foreground"
             android:scaleType="fitCenter"
-            android:padding="20dp"
-            app:tint="#CCCCCC" />
+            android:padding="24dp"
+            app:tint="#E2E8F0" />
     </androidx.cardview.widget.CardView>
-
-    <TextView
-        android:id="@+id/txtCurrentAction"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Ready to Capture"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/text_primary"
-        android:layout_marginTop="24dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cardPreview" />
 
     <LinearLayout
         android:id="@+id/btnContainer"
-        android:layout_width="match_parent"
+        android:layout_width="240dp"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:layout_marginTop="16dp"
-        app:layout_constraintTop_toBottomOf="@id/txtCurrentAction">
+        app:layout_constraintTop_toBottomOf="@id/cardPreview"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <Button
             android:id="@+id/btnStartCapture"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Capture"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="Start Capture"
             android:backgroundTint="@color/mantra_accent"
-            android:layout_marginEnd="8dp"/>
+            android:textColor="@color/white"
+            android:layout_marginBottom="8dp"/>
 
         <Button
             android:id="@+id/btnAutoCapture"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
             android:text="Auto Loop"
             android:backgroundTint="#0F172A"
-            android:layout_marginEnd="8dp"/>
+            android:textColor="@color/white"
+            android:layout_marginBottom="8dp"/>
 
         <Button
             android:id="@+id/btnStopCapture"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
             android:text="Stop"
             android:backgroundTint="#EF4444"
+            android:textColor="@color/white"
             android:enabled="false"/>
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/txtMessage"
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:background="#F1F5F9"
-        android:padding="12dp"
-        android:text="Status: Idle"
-        android:textAlignment="center"
-        android:textColor="@color/text_secondary"
-        app:layout_constraintBottom_toBottomOf="parent"/>
+        app:cardCornerRadius="8dp"
+        app:cardBackgroundColor="#F1F5F9"
+        app:cardElevation="0dp"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <TextView
+            android:id="@+id/txtMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:text="Status: Idle"
+            android:textAlignment="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:gravity="center"/>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
