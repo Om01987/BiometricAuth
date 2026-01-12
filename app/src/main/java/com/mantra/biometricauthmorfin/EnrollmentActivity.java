@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -136,12 +138,27 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
 
         txtAutoId.setText(tempUserId);
 
+        // --- FIXED CANCEL LISTENER ---
         btnCancel.setOnClickListener(v -> {
             dialog.dismiss();
             stopRequested = true;
+
+            // FIX: Explicitly set isCapturing to false here.
+            // When coming from onSaveSuccess, isCapturing is true. We must reset it.
+            isCapturing = false;
+
             updateButtons(false);
-            txtMessage.setText("Enrollment Cancelled");
+            txtMessage.setText("Enrollment stopped");
+            txtUserName.setText("Name: Waiting for Input");
+
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                // Now this check will pass because we set isCapturing = false above
+                if (!isCapturing) {
+                    txtMessage.setText("Idle");
+                }
+            }, 2000);
         });
+        // -----------------------------
 
         btnStart.setOnClickListener(v -> {
             String name = edtName.getText().toString().trim();
@@ -167,16 +184,12 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         isCapturing = true;
         updateButtons(true);
 
-
         imgFingerPreview.setImageResource(android.R.drawable.ic_menu_gallery);
-
         imgFingerPreview.setImageTintList(ColorStateList.valueOf(Color.LTGRAY));
-
 
         txtMessage.setText("Place finger on sensor...");
 
         new Thread(() -> {
-
             bioManager.getSDK().StopCapture();
             try { Thread.sleep(200); } catch (Exception e){}
 
@@ -238,8 +251,14 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         }
         isCapturing = false;
         updateButtons(false);
-        txtMessage.setText("Stopped.");
-        txtMessage.setText("idle.");
+
+        txtMessage.setText("Manually Stopped");
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!isCapturing) {
+                txtMessage.setText("Idle");
+            }
+        }, 2000);
     }
 
     private void updateButtons(boolean capturing) {
@@ -263,28 +282,20 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         });
     }
 
-
     @Override
     public void OnPreview(int errorCode, int quality, byte[] image) {
         if (errorCode == 0 && image != null) {
-
             Bitmap bitmap = BitmapFactory.decodeByteArray(image, 0, image.length);
-
             runOnUiThread(() -> {
                 if (bitmap != null) {
-
                     imgFingerPreview.setImageTintList(null);
-
                     imgFingerPreview.clearColorFilter();
-
-
                     imgFingerPreview.setImageBitmap(bitmap);
                     txtMessage.setText("Quality: " + quality);
                 }
             });
         }
     }
-
 
     @Override
     public void OnComplete(int errorCode, int quality, int nfiq) {
@@ -311,7 +322,6 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         new Thread(() -> {
             try {
                 int[] size = new int[1];
-
                 byte[] imgBuffer = new byte[800 * 800 + 2048];
                 int ret1 = bioManager.getSDK().GetImage(imgBuffer, size, 1, ImageFormat.BMP);
 
@@ -364,7 +374,6 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
             fetchNextId();
             txtUserName.setText("Name: Waiting...");
             txtMessage.setText("User Saved. Next...");
-
 
             imgFingerPreview.setImageResource(android.R.drawable.ic_menu_gallery);
             imgFingerPreview.setImageTintList(ColorStateList.valueOf(Color.LTGRAY));
