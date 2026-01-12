@@ -25,21 +25,20 @@ import java.util.List;
 
 public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callback {
 
-
     private ImageView imgMatchPreview, btnBack;
     private TextView txtMatchStatus;
     private Button btnStartMatch;
     private RecyclerView recyclerMatches;
 
-
     private BiometricManager bioManager;
     private FingerprintDatabaseHelper dbHelper;
-
 
     private boolean isCapturing = false;
     private int minQuality = 60;
     private int timeOut = 10000;
 
+    // List to hold current results so we can modify it on delete
+    private List<MatchedUser> currentMatches = new ArrayList<>();
 
     public static class MatchedUser implements Comparable<MatchedUser> {
         String name;
@@ -54,7 +53,6 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
 
         @Override
         public int compareTo(MatchedUser o) {
-
             return Integer.compare(o.score, this.score);
         }
     }
@@ -108,21 +106,19 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         btnStartMatch.setEnabled(false);
         txtMatchStatus.setText("Place Finger...");
 
-
+        // Clear previous data
+        currentMatches.clear();
         recyclerMatches.setAdapter(null);
-
 
         imgMatchPreview.setImageResource(android.R.drawable.ic_menu_gallery);
         imgMatchPreview.setImageTintList(ColorStateList.valueOf(Color.LTGRAY));
 
         new Thread(() -> {
-
             bioManager.getSDK().StopCapture();
             try { Thread.sleep(200); } catch (Exception e){}
 
             int[] qty = new int[1];
             int[] nfiq = new int[1];
-
 
             int ret = bioManager.getSDK().AutoCapture(minQuality, timeOut, qty, nfiq);
 
@@ -150,7 +146,6 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     private void processMatch(int quality) {
         new Thread(() -> {
             try {
-
                 byte[] tempBuffer = new byte[2048];
                 int[] tSize = new int[1];
                 int ret = bioManager.getSDK().GetTemplate(tempBuffer, tSize, TemplateFormat.FMR_V2011);
@@ -166,7 +161,6 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                 byte[] capturedTemplate = new byte[tSize[0]];
                 System.arraycopy(tempBuffer, 0, capturedTemplate, 0, tSize[0]);
 
-
                 List<FingerprintDatabaseHelper.UserRecord> users = dbHelper.getAllUsersForMatching();
 
                 if (users.isEmpty()) {
@@ -177,7 +171,6 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                     return;
                 }
 
-
                 List<MatchedUser> foundMatches = new ArrayList<>();
                 int threshold = 400;
 
@@ -185,23 +178,22 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                     int[] score = new int[1];
                     int matchRet = bioManager.getSDK().MatchTemplate(capturedTemplate, user.template, score, TemplateFormat.FMR_V2011);
 
-
                     if (matchRet == 0 && score[0] > threshold) {
                         foundMatches.add(new MatchedUser(user.userName, user.userId, score[0]));
                     }
                 }
 
-
                 Collections.sort(foundMatches);
 
 
+                currentMatches = foundMatches;
+
                 runOnUiThread(() -> {
-                    if (!foundMatches.isEmpty()) {
-                        txtMatchStatus.setText("Found " + foundMatches.size() + " Matches");
+                    if (!currentMatches.isEmpty()) {
+                        txtMatchStatus.setText("Found " + currentMatches.size() + " Matches");
                         txtMatchStatus.setTextColor(Color.parseColor("#4CAF50"));
 
-
-                        MatchResultAdapter adapter = new MatchResultAdapter(foundMatches, this::showDeleteDialog);
+                        MatchResultAdapter adapter = new MatchResultAdapter(currentMatches, this::showDeleteDialog);
                         recyclerMatches.setAdapter(adapter);
                     } else {
                         txtMatchStatus.setText("No Matches Found");
@@ -217,7 +209,6 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         }).start();
     }
 
-
     private void showDeleteDialog(MatchedUser user) {
         new AlertDialog.Builder(this)
                 .setTitle("Delete User")
@@ -225,11 +216,25 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                 .setPositiveButton("Delete", (dialog, which) -> {
                     boolean deleted = dbHelper.deleteUser(user.id);
                     if (deleted) {
-                        Toast.makeText(this, "Deleted. Re-scan to update list.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Deleted: " + user.name, Toast.LENGTH_SHORT).show();
 
 
-                        recyclerMatches.setAdapter(null);
-                        txtMatchStatus.setText("User Deleted. Please Scan Again.");
+                        currentMatches.remove(user);
+
+
+                        if (recyclerMatches.getAdapter() != null) {
+                            recyclerMatches.getAdapter().notifyDataSetChanged();
+                        }
+
+
+                        if (currentMatches.isEmpty()) {
+                            txtMatchStatus.setText("No Matches Remaining");
+                            txtMatchStatus.setTextColor(Color.parseColor("#F44336"));
+                        } else {
+                            txtMatchStatus.setText("Found " + currentMatches.size() + " Matches");
+                            txtMatchStatus.setTextColor(Color.parseColor("#4CAF50"));
+                        }
+
                     } else {
                         Toast.makeText(this, "Delete Failed", Toast.LENGTH_SHORT).show();
                     }
@@ -264,7 +269,6 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
             Toast.makeText(this, "Device Disconnected", Toast.LENGTH_SHORT).show();
         }
     }
-
 
     @Override public void OnComplete(int i, int i1, int i2) {}
     @Override public void OnFingerPosition(int i, int i1) {}
