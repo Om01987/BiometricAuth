@@ -36,7 +36,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     private int minQuality = 60;
     private int timeOut = 10000;
 
-    // Model class to hold match results
+
     public static class MatchedUser implements Comparable<MatchedUser> {
         String name;
         String id;
@@ -50,7 +50,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
 
         @Override
         public int compareTo(MatchedUser o) {
-            // Sort Descending by Score
+
             return Integer.compare(o.score, this.score);
         }
     }
@@ -104,10 +104,10 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         btnStartMatch.setEnabled(false);
         txtMatchStatus.setText("Place Finger...");
 
-        // Clear previous results
+
         recyclerMatches.setAdapter(null);
 
-        // Reset Preview
+
         imgMatchPreview.setImageResource(android.R.drawable.ic_menu_gallery);
         imgMatchPreview.setImageTintList(ColorStateList.valueOf(Color.LTGRAY));
 
@@ -144,7 +144,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     private void processMatch(int quality) {
         new Thread(() -> {
             try {
-                // 1. Get Template
+
                 byte[] tempBuffer = new byte[2048];
                 int[] tSize = new int[1];
                 int ret = bioManager.getSDK().GetTemplate(tempBuffer, tSize, TemplateFormat.FMR_V2011);
@@ -160,7 +160,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                 byte[] capturedTemplate = new byte[tSize[0]];
                 System.arraycopy(tempBuffer, 0, capturedTemplate, 0, tSize[0]);
 
-                // 2. Fetch Users
+
                 List<FingerprintDatabaseHelper.UserRecord> users = dbHelper.getAllUsersForMatching();
 
                 if (users.isEmpty()) {
@@ -171,9 +171,9 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                     return;
                 }
 
-                // 3. Match ALL Users
+
                 List<MatchedUser> foundMatches = new ArrayList<>();
-                int threshold = 400; // --- UPDATED THRESHOLD TO 400 ---
+                int threshold = 400;
 
                 for (FingerprintDatabaseHelper.UserRecord user : users) {
                     int[] score = new int[1];
@@ -184,10 +184,10 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                     }
                 }
 
-                // 4. Sort results (Best match first)
+
                 Collections.sort(foundMatches);
 
-                // 5. Update UI
+
                 runOnUiThread(() -> {
                     if (!foundMatches.isEmpty()) {
                         txtMatchStatus.setText("Found " + foundMatches.size() + " Matches");

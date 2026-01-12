@@ -30,7 +30,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         FingerprintDatabaseHelper.UserRecord user = userList.get(position);
 
         holder.txtUserId.setText(user.userId);
-        // Default to "No Name" if empty
+
         holder.txtUserName.setText(
                 (user.userName != null && !user.userName.isEmpty()) ? user.userName : "No Name"
         );
