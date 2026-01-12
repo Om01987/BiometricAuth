@@ -2,7 +2,10 @@ package com.mantra.biometricauthmorfin;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -25,26 +28,26 @@ import java.io.FileOutputStream;
 
 public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_Callback {
 
-    // UI
+
     private TextView txtDeviceStatus, txtUserId, txtUserName, txtMessage;
     private ImageView imgFingerPreview, btnBack;
     private Button btnStartCapture, btnAutoCapture, btnStopCapture;
 
-    // Logic
+
     private BiometricManager bioManager;
     private FingerprintDatabaseHelper dbHelper;
     private String storagePath;
 
-    // State
+
     private boolean isCapturing = false;
-    private boolean stopRequested = false;
-    private boolean isAutoCaptureMode = false; // true = Sync/Thread loop, false = Async/Callback loop
+    private volatile boolean stopRequested = false;
+    private boolean isAutoCaptureMode = false;
 
     private String tempUserId, tempUserName;
     private int captureCount = 0;
     private static final int MAX_FINGERS = 10;
 
-    // Settings
+
     private int minQuality = 60;
     private int timeOut = 10000;
 
@@ -68,7 +71,6 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         if (bioManager.isReady()) {
             txtDeviceStatus.setText("Device Ready");
             txtDeviceStatus.setBackgroundColor(ContextCompat.getColor(this, R.color.status_connected));
-            // Show Next ID immediately
             fetchNextId();
         } else {
             txtDeviceStatus.setText("Device Not Initialized");
@@ -82,13 +84,13 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
     private void fetchNextId() {
         String nextId = dbHelper.getNextUserId();
         txtUserId.setText("User ID: " + nextId);
-        tempUserId = nextId; // Store for later
+        tempUserId = nextId;
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (isCapturing) stopCapture();
+        stopCaptureProcess();
         bioManager.removeListener();
     }
 
@@ -99,20 +101,25 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         txtMessage = findViewById(R.id.txtMessage);
         imgFingerPreview = findViewById(R.id.imgFingerPreview);
         btnBack = findViewById(R.id.btnBack);
+
         btnStartCapture = findViewById(R.id.btnStartCapture);
         btnAutoCapture = findViewById(R.id.btnAutoCapture);
         btnStopCapture = findViewById(R.id.btnStopCapture);
 
         btnBack.setOnClickListener(v -> finish());
-        btnStopCapture.setOnClickListener(v -> stopCapture());
+        btnStopCapture.setOnClickListener(v -> stopCaptureProcess());
 
         btnStartCapture.setOnClickListener(v -> {
             isAutoCaptureMode = false;
+            captureCount = 0;
+            stopRequested = false;
             showUserDialog();
         });
 
         btnAutoCapture.setOnClickListener(v -> {
             isAutoCaptureMode = true;
+            captureCount = 0;
+            stopRequested = false;
             showUserDialog();
         });
     }
@@ -124,15 +131,21 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.setCancelable(false);
 
         TextView txtAutoId = dialogView.findViewById(R.id.txtDialogUserId);
         EditText edtName = dialogView.findViewById(R.id.edtDialogUserName);
         Button btnCancel = dialogView.findViewById(R.id.btnDialogCancel);
         Button btnStart = dialogView.findViewById(R.id.btnDialogStart);
 
-        txtAutoId.setText(tempUserId); // Use fetched ID
+        txtAutoId.setText(tempUserId);
 
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnCancel.setOnClickListener(v -> {
+            dialog.dismiss();
+            stopRequested = true;
+            updateButtons(false);
+            txtMessage.setText("Enrollment Cancelled");
+        });
 
         btnStart.setOnClickListener(v -> {
             String name = edtName.getText().toString().trim();
@@ -142,35 +155,52 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
             }
             tempUserName = name;
             txtUserName.setText("Name: " + tempUserName);
+            txtUserId.setText("User ID: " + tempUserId);
+
+
+            stopRequested = false;
+
             dialog.dismiss();
 
-            // Reset counters before starting
-            captureCount = 0;
-            stopRequested = false;
-            isCapturing = true;
-            updateButtons(true);
-
-            if (isAutoCaptureMode) {
-                runAutoCaptureLoop();
-            } else {
-                runAsyncCaptureLoop();
-            }
+            prepareAndStartCapture();
         });
 
         dialog.show();
     }
 
-    // --- MODE 1: ASYNC LOOP (StartCapture) ---
-    private void runAsyncCaptureLoop() {
-        if (stopRequested || captureCount >= MAX_FINGERS) {
-            finishSession("Capture Complete.");
-            return;
-        }
+    private void prepareAndStartCapture() {
+        if (!bioManager.isReady()) return;
 
-        txtMessage.setText("Finger " + (captureCount + 1) + "/" + MAX_FINGERS + ": Place Finger...");
+        isCapturing = true;
+        updateButtons(true);
 
-        // This is non-blocking. Result comes in OnComplete
+        imgFingerPreview.setImageResource(android.R.drawable.ic_menu_gallery);
+        imgFingerPreview.setColorFilter(Color.LTGRAY);
+
+        txtMessage.setText("Place finger on sensor...");
+
+        new Thread(() -> {
+
+            bioManager.getSDK().StopCapture();
+            try { Thread.sleep(300); } catch (Exception e){}
+
+            runOnUiThread(() -> {
+                if (isAutoCaptureMode) {
+                    runSyncAutoCapture();
+                } else {
+                    runAsyncStartCapture();
+                }
+            });
+        }).start();
+    }
+
+
+    private void runAsyncStartCapture() {
+        if (stopRequested) return;
+
+
         int ret = bioManager.getSDK().StartCapture(minQuality, timeOut);
+
         if (ret != 0) {
             txtMessage.setText("Start Failed: " + ret);
             isCapturing = false;
@@ -178,48 +208,49 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         }
     }
 
-    // --- MODE 2: SYNC LOOP (AutoCapture) ---
-    private void runAutoCaptureLoop() {
+    private void runSyncAutoCapture() {
         new Thread(() -> {
-            while (captureCount < MAX_FINGERS && !stopRequested) {
-                runOnUiThread(() -> txtMessage.setText("Finger " + (captureCount + 1) + ": Place Finger (Auto)..."));
+            int[] qty = new int[1];
+            int[] nfiq = new int[1];
 
-                int[] qty = new int[1];
-                int[] nfiq = new int[1];
 
-                // Blocks here until finger detected or timeout
+            while (!stopRequested) {
+
+
                 int ret = bioManager.getSDK().AutoCapture(minQuality, timeOut, qty, nfiq);
 
                 if (ret == 0) {
-                    captureCount++;
-                    saveData(qty[0], nfiq[0]); // Save
-                    // Wait a bit so user lifts finger
-                    try { Thread.sleep(1000); } catch (InterruptedException e) {}
+
+                    runOnUiThread(() -> {
+                        txtMessage.setText("Processing Capture...");
+                        saveData(qty[0], nfiq[0]);
+                    });
+                    break;
+                } else if (ret == -2019) {
+
+                    runOnUiThread(() -> txtMessage.setText("Timeout. Place finger..."));
+                    continue;
                 } else {
-                    if (ret == -2019) continue; // Timeout, retry
-                    // Error
-                    runOnUiThread(() -> txtMessage.setText("Auto Error: " + ret));
+
+                    runOnUiThread(() -> {
+                        txtMessage.setText("Auto Capture Error: " + ret);
+                        isCapturing = false;
+                        updateButtons(false);
+                    });
                     break;
                 }
             }
-            runOnUiThread(() -> finishSession("Auto Loop Finished"));
         }).start();
     }
 
-    private void stopCapture() {
+    private void stopCaptureProcess() {
         stopRequested = true;
         if (bioManager.isReady()) {
-            bioManager.getSDK().StopCapture();
+            new Thread(() -> bioManager.getSDK().StopCapture()).start();
         }
-        txtMessage.setText("Stopping...");
-    }
-
-    private void finishSession(String msg) {
         isCapturing = false;
-        stopRequested = false;
         updateButtons(false);
-        txtMessage.setText(msg);
-        fetchNextId(); // Prepare ID for next user
+        txtMessage.setText("Stopped.");
     }
 
     private void updateButtons(boolean capturing) {
@@ -230,15 +261,17 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         });
     }
 
-    // --- CALLBACKS ---
+
+
     @Override
     public void OnDeviceDetection(String deviceName, DeviceDetection detection) {
         runOnUiThread(() -> {
             if (detection == DeviceDetection.DISCONNECTED) {
                 txtDeviceStatus.setText("Device Disconnected");
                 txtDeviceStatus.setBackgroundColor(ContextCompat.getColor(this, R.color.status_disconnected));
-                stopCapture();
+                stopCaptureProcess();
                 finish();
+                Toast.makeText(this, "Device Removed", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -248,73 +281,112 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         if (errorCode == 0 && image != null) {
             Bitmap bitmap = BitmapFactory.decodeByteArray(image, 0, image.length);
             runOnUiThread(() -> {
+                imgFingerPreview.clearColorFilter();
                 imgFingerPreview.setImageBitmap(bitmap);
-                // Don't overwrite message if we are in loop info mode
+                txtMessage.setText("Quality: " + quality);
             });
         }
     }
 
     @Override
     public void OnComplete(int errorCode, int quality, int nfiq) {
-        // Only for Async Mode
+
         if (isAutoCaptureMode) return;
 
         runOnUiThread(() -> {
             if (errorCode == 0) {
-                captureCount++;
+                txtMessage.setText("Capture Success. Saving...");
                 saveData(quality, nfiq);
+            } else if (errorCode == -2019) {
 
-                // Trigger next capture if not stopped
-                if (!stopRequested && captureCount < MAX_FINGERS) {
-                    // Small delay to allow lifting finger
-                    new android.os.Handler().postDelayed(this::runAsyncCaptureLoop, 1000);
-                } else {
-                    finishSession("Capture Session Ended.");
+                if (!stopRequested) {
+                    txtMessage.setText("Timeout. Retrying...");
+                    runAsyncStartCapture();
                 }
             } else {
-                txtMessage.setText("Error: " + errorCode);
-                // Retry?
-                if (!stopRequested) runAsyncCaptureLoop();
+                txtMessage.setText("Capture Error: " + errorCode);
+                isCapturing = false;
+                updateButtons(false);
             }
         });
     }
 
-    // --- SAVING ---
+
     private void saveData(int quality, int nfiq) {
-        // Note: In AutoMode this runs on BG thread. In Async, on Main.
-        // We put it in a thread to be safe.
         new Thread(() -> {
             try {
+
                 int[] size = new int[1];
-                byte[] imgBuffer = new byte[800 * 800 + 1024];
+                byte[] imgBuffer = new byte[800 * 800 + 2048];
                 int ret1 = bioManager.getSDK().GetImage(imgBuffer, size, 1, ImageFormat.BMP);
+
+
                 byte[] finalImg = new byte[size[0]];
                 System.arraycopy(imgBuffer, 0, finalImg, 0, size[0]);
 
                 byte[] tempBuffer = new byte[2048];
                 int[] tSize = new int[1];
                 int ret2 = bioManager.getSDK().GetTemplate(tempBuffer, tSize, TemplateFormat.FMR_V2011);
+
                 byte[] finalTemp = new byte[tSize[0]];
                 System.arraycopy(tempBuffer, 0, finalTemp, 0, tSize[0]);
 
                 if (ret1 == 0 && ret2 == 0) {
-                    String fname = tempUserId + "_" + captureCount + "_" + System.currentTimeMillis() + ".bmp";
+
+                    String fname = tempUserId + "_" + System.currentTimeMillis() + ".bmp";
                     File file = new File(storagePath, fname);
                     if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
                     FileOutputStream fos = new FileOutputStream(file);
                     fos.write(finalImg);
                     fos.close();
 
-                    dbHelper.saveFingerprint(tempUserId, tempUserName, file.getAbsolutePath(), finalTemp, quality, nfiq);
 
-                    runOnUiThread(() ->
-                            Toast.makeText(this, "Saved Finger " + captureCount, Toast.LENGTH_SHORT).show()
-                    );
+                    boolean saved = dbHelper.saveFingerprint(tempUserId, tempUserName, file.getAbsolutePath(), finalTemp, quality, nfiq);
+
+                    runOnUiThread(() -> {
+                        if (saved) {
+                            Toast.makeText(this, "Enrolled: " + tempUserName, Toast.LENGTH_SHORT).show();
+                            onSaveSuccess(); // Trigger next user
+                        } else {
+                            txtMessage.setText("DB Save Error");
+                            isCapturing = false;
+                            updateButtons(false);
+                        }
+                    });
+                } else {
+                    runOnUiThread(() -> txtMessage.setText("Failed to extract data: " + ret1 + "/" + ret2));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+    private void onSaveSuccess() {
+        captureCount++;
+
+        if (captureCount < MAX_FINGERS && !stopRequested) {
+
+            fetchNextId();
+            txtUserName.setText("Name: Waiting...");
+            txtMessage.setText("User Saved. Next...");
+
+
+            showUserDialog();
+        } else {
+            finishSession("Session Complete (" + captureCount + " Users)");
+        }
+    }
+
+    private void finishSession(String msg) {
+        isCapturing = false;
+        stopRequested = false;
+        updateButtons(false);
+        txtMessage.setText(msg);
+        fetchNextId();
+
+        imgFingerPreview.setImageResource(android.R.drawable.ic_menu_gallery);
+        imgFingerPreview.setColorFilter(Color.LTGRAY);
     }
 
     @Override public void OnFingerPosition(int i, int i1) {}
