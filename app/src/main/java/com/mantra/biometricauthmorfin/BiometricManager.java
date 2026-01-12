@@ -18,7 +18,7 @@ public class BiometricManager implements MorfinAuth_Callback {
     private MorfinAuth morfinAuth;
     private MorfinAuth_Callback activeListener;
 
-    // State Tracking
+
     private boolean isDeviceConnected = false;
     private boolean isDeviceInitialized = false;
     private DeviceModel currentModel;
@@ -43,8 +43,7 @@ public class BiometricManager implements MorfinAuth_Callback {
 
     public void setListener(MorfinAuth_Callback listener) {
         this.activeListener = listener;
-        // If device is already connected, notify the new listener immediately
-        // This ensures the UI updates even if the connection event happened earlier
+
         if (isDeviceConnected && activeListener != null) {
             new Handler(Looper.getMainLooper()).post(() ->
                     activeListener.OnDeviceDetection(currentModel != null ? currentModel.name() : "Device", DeviceDetection.CONNECTED)
@@ -56,12 +55,12 @@ public class BiometricManager implements MorfinAuth_Callback {
         this.activeListener = null;
     }
 
-    // --- Core Functions ---
+
 
     public void initDevice(DeviceModel model, DeviceInfo info) {
         if (morfinAuth == null) return;
 
-        // Prevent double init only if we are truly initialized
+
         if (isDeviceInitialized && currentModel == model) {
             Log.d("SDK", "BiometricManager: Already Initialized");
             return;
@@ -71,36 +70,32 @@ public class BiometricManager implements MorfinAuth_Callback {
         if (ret == 0) {
             isDeviceInitialized = true;
             currentModel = model;
-            lastDeviceInfo = info; // Save info to persist across screens
+            lastDeviceInfo = info;
         } else {
             isDeviceInitialized = false;
             lastDeviceInfo = null;
         }
     }
 
-    // Explicitly Uninitialize
+
     public void uninitDevice() {
         if (morfinAuth != null) {
             morfinAuth.Uninit();
         }
-        // Reset Logic Flags
+
         isDeviceInitialized = false;
         lastDeviceInfo = null;
 
-        // Note: We DO NOT set isDeviceConnected = false here.
-        // The USB cable is still physically plugged in.
-        // We only want to force re-initialization.
     }
 
     public MorfinAuth getSDK() { return morfinAuth; }
 
-    // Status Checkers for MainActivity
     public boolean isConnected() { return isDeviceConnected; }
     public boolean isReady() { return isDeviceConnected && isDeviceInitialized; }
     public DeviceInfo getLastDeviceInfo() { return lastDeviceInfo; }
     public DeviceModel getConnectedModel() { return currentModel; }
 
-    // --- SDK Callbacks (Forwarding) ---
+
 
     @Override
     public void OnDeviceDetection(String deviceName, DeviceDetection detection) {
@@ -108,7 +103,7 @@ public class BiometricManager implements MorfinAuth_Callback {
             isDeviceConnected = true;
             try { currentModel = DeviceModel.valueOf(deviceName); } catch (Exception e) {}
         } else {
-            // Physical Disconnect triggers full reset
+
             isDeviceConnected = false;
             isDeviceInitialized = false;
             currentModel = null;

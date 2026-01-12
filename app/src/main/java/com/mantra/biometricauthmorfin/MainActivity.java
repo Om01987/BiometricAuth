@@ -30,8 +30,8 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
 
     private BiometricManager bioManager;
     private FingerprintDatabaseHelper dbHelper;
-    private DeviceModel pendingModel; // Tracks model when connected but not init
-    private int selectedDeleteOption = 0; // Tracks dialog selection
+    private DeviceModel pendingModel;
+    private int selectedDeleteOption = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,17 +58,16 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
         bioManager.setListener(this);
         refreshUserCount();
 
-        // --- STATE SYNC LOGIC ---
-        // This fixes the issue of returning from Capture screen showing wrong status
+
         if (bioManager.isConnected()) {
-            // 1. Device IS connected (Green)
+
             DeviceModel model = bioManager.getConnectedModel();
             pendingModel = model;
             setUIConnected(true);
             txtConnectionStatus.setText("Connected (" + (model != null ? model.name() : "Device") + ")");
 
             if (bioManager.isReady()) {
-                // 2. Device IS Initialized -> Fill Details
+
                 DeviceInfo info = bioManager.getLastDeviceInfo();
                 if (info != null) {
                     fillDeviceDetails(info);
@@ -77,14 +76,14 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
                 btnInitDevice.setEnabled(false);
                 btnUninitDevice.setEnabled(true);
             } else {
-                // 3. Connected but NOT Initialized -> Clear Details
+
                 txtDeviceDetails.setText("Make: -\nModel: -\nSerial: -\nW/H: -");
                 txtBottomMessage.setText("Device found! Press INIT.");
                 btnInitDevice.setEnabled(true);
                 btnUninitDevice.setEnabled(false);
             }
         } else {
-            // 4. Device NOT connected (Red)
+
             pendingModel = null;
             setUIConnected(false);
             txtConnectionStatus.setText("Disconnected");
@@ -119,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
     }
 
     private void setupListeners() {
-        // --- INIT ---
+
         btnInitDevice.setOnClickListener(v -> {
             if (bioManager.isReady()) {
                 Toast.makeText(this, "Already Initialized", Toast.LENGTH_SHORT).show();
@@ -148,7 +147,7 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
             }
         });
 
-        // --- UNINIT ---
+
         btnUninitDevice.setOnClickListener(v -> {
             new Thread(() -> {
                 bioManager.uninitDevice();
@@ -165,7 +164,7 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
             }).start();
         });
 
-        // --- ACTIONS ---
+
         cardCapture.setOnClickListener(v -> {
             if (!bioManager.isReady()) {
                 Toast.makeText(this, "Please INIT device first!", Toast.LENGTH_SHORT).show();
@@ -190,7 +189,7 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
         });
     }
 
-    // --- MANAGER CALLBACKS (Live Updates) ---
+
     @Override
     public void OnDeviceDetection(String deviceName, DeviceDetection detection) {
         runOnUiThread(() -> {
@@ -232,7 +231,7 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
     @Override public void OnComplete(int i, int i1, int i2) {}
     @Override public void OnFingerPosition(int i, int i1) {}
 
-    // --- HELPERS ---
+
 
     private void setUIConnected(boolean connected) {
         int color = ContextCompat.getColor(this, connected ? R.color.status_connected : R.color.status_disconnected);
@@ -258,13 +257,13 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
 
     private void showDeleteOptionsDialog() {
         String[] options = {"Clear Database Only", "Clear Files Only", "Clear EVERYTHING"};
-        selectedDeleteOption = 0; // Default selection
+        selectedDeleteOption = 0;
 
         new AlertDialog.Builder(this)
                 .setTitle("Manage Data")
                 .setIcon(android.R.drawable.ic_dialog_alert)
                 .setSingleChoiceItems(options, 0, (dialog, which) -> {
-                    selectedDeleteOption = which; // Track selection
+                    selectedDeleteOption = which;
                 })
                 .setPositiveButton("DELETE", (dialog, which) -> {
                     String path = getExternalFilesDir(null).getAbsolutePath() + "/FingerData";

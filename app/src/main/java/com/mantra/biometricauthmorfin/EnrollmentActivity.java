@@ -25,22 +25,22 @@ import java.io.FileOutputStream;
 
 public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_Callback {
 
-    // UI
+
     private TextView txtDeviceStatus, txtUserId, txtUserName, txtMessage;
     private ImageView imgFingerPreview, btnBack;
     private Button btnStartCapture, btnAutoCapture, btnStopCapture;
 
-    // Logic
+
     private BiometricManager bioManager;
     private FingerprintDatabaseHelper dbHelper;
     private String storagePath;
 
-    // State
+
     private boolean isCapturing = false;
     private boolean isAutoLoop = false;
     private String tempUserId, tempUserName;
 
-    // Settings
+
     private int minQuality = 60;
     private int timeOut = 10000;
 
@@ -59,7 +59,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
     @Override
     protected void onResume() {
         super.onResume();
-        bioManager.setListener(this); // Listen for live preview
+        bioManager.setListener(this);
 
         if (bioManager.isReady()) {
             txtDeviceStatus.setText("Device Ready");
@@ -105,7 +105,6 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         });
     }
 
-    // --- 1. USER DIALOG ---
     private void showUserDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         LayoutInflater inflater = this.getLayoutInflater();
@@ -124,7 +123,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
 
         btnCancel.setOnClickListener(v -> {
             dialog.dismiss();
-            isAutoLoop = false; // Cancel loop
+            isAutoLoop = false;
         });
 
         btnStart.setOnClickListener(v -> {
@@ -136,7 +135,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
             tempUserId = nextId;
             tempUserName = name;
 
-            // UPDATE UI WITH USER INFO
+
             txtUserId.setText("User ID: " + tempUserId);
             txtUserName.setText("Name: " + tempUserName);
 
@@ -147,19 +146,19 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         dialog.show();
     }
 
-    // --- 2. CAPTURE LOGIC ---
+
     private void startCapture() {
         if (!bioManager.isReady()) return;
 
         isCapturing = true;
         updateButtons(true);
-        // Clear preview only on fresh start, maybe keep for loop
+
         if (!isAutoLoop) imgFingerPreview.setImageResource(android.R.drawable.ic_menu_gallery);
 
         txtMessage.setText("Place finger on sensor...");
 
         if (isAutoLoop) {
-            // Using Sync AutoCapture in background thread
+
             new Thread(() -> {
                 int[] qty = new int[1];
                 int[] nfiq = new int[1];
@@ -177,7 +176,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
                 });
             }).start();
         } else {
-            // Using Async StartCapture
+
             int ret = bioManager.getSDK().StartCapture(minQuality, timeOut);
             if (ret != 0) {
                 txtMessage.setText("Start Failed: " + ret);
@@ -205,7 +204,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         });
     }
 
-    // --- 3. CALLBACKS ---
+
     @Override
     public void OnDeviceDetection(String deviceName, DeviceDetection detection) {
         runOnUiThread(() -> {
@@ -232,7 +231,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
 
     @Override
     public void OnComplete(int errorCode, int quality, int nfiq) {
-        // Called for Async StartCapture
+        // for Async StartCapture
         runOnUiThread(() -> {
             if (errorCode == 0) {
                 txtMessage.setText("Capture Success. Saving...");
@@ -245,7 +244,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         });
     }
 
-    // --- 4. SAVING ---
+    // saving
     private void saveData(int quality, int nfiq) {
         new Thread(() -> {
             try {

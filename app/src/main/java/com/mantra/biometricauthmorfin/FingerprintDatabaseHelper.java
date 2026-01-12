@@ -14,17 +14,17 @@ import java.util.List;
 public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "fingerprint_auth.db";
-    // Version 2 adds user_name and changes image blob to image_path
+
     private static final int DB_VERSION = 2;
 
     public static final String TABLE_FINGERPRINTS = "fingerprints";
 
-    // Column Definitions
+
     public static final String COL_ID = "id";
     public static final String COL_USER_ID = "user_id";
-    public static final String COL_USER_NAME = "user_name"; // Stores Person's Name
-    public static final String COL_IMAGE_PATH = "image_path"; // Stores File Path String
-    public static final String COL_TEMPLATE = "template";     // Stores Biometric Blob
+    public static final String COL_USER_NAME = "user_name";
+    public static final String COL_IMAGE_PATH = "image_path";
+    public static final String COL_TEMPLATE = "template";
     public static final String COL_QUALITY = "quality";
     public static final String COL_NFIQ = "nfiq";
     public static final String COL_CREATED_AT = "created_at";
@@ -53,16 +53,12 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Drop older table if exists and recreate
+
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_FINGERPRINTS);
         onCreate(db);
     }
 
-    // --- 1. CORE FUNCTIONS (Save & ID Generation) ---
 
-    /**
-     * Generates the next User ID (e.g., USER_001) based on total count.
-     */
     public String getNextUserId() {
         SQLiteDatabase db = this.getReadableDatabase();
         String nextId = "USER_001";
@@ -82,9 +78,7 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return nextId;
     }
 
-    /**
-     * Saves a new user record.
-     */
+
     public boolean saveFingerprint(String userId, String name, String imagePath, byte[] template, int quality, int nfiq) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -113,11 +107,7 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    // --- 2. DATA RETRIEVAL FUNCTIONS ---
 
-    /**
-     * Returns total registered users count.
-     */
     public int getUserCount() {
         int count = 0;
         SQLiteDatabase db = this.getReadableDatabase();
@@ -136,14 +126,14 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
 
-    // Helper Class to hold User Data
+
     public static class UserRecord {
         public String userId;
         public String userName;
         public String imagePath;
         public byte[] template;
 
-        // Constructor for Matching (Includes Template)
+
         public UserRecord(String id, String name, String path, byte[] temp) {
             this.userId = id;
             this.userName = name;
@@ -151,7 +141,7 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
             this.template = temp;
         }
 
-        // Constructor for Listing (No Template)
+
         public UserRecord(String id, String name, String path) {
             this.userId = id;
             this.userName = name;
@@ -159,15 +149,12 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    /**
-     * Get List of All Users (ID, Name, ImagePath) - For List View (No heavy blobs).
-     */
     public List<UserRecord> getAllUsersList() {
         List<UserRecord> users = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = null;
         try {
-            // Select only necessary fields for UI listing
+
             cursor = db.rawQuery("SELECT " + COL_USER_ID + ", " + COL_USER_NAME + ", " + COL_IMAGE_PATH +
                     " FROM " + TABLE_FINGERPRINTS + " ORDER BY " + COL_CREATED_AT + " DESC", null);
 
@@ -188,9 +175,7 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return users;
     }
 
-    /**
-     * Get All Users with Template - Used for 1:N Matching Logic.
-     */
+
     public List<UserRecord> getAllUsersForMatching() {
         List<UserRecord> users = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
@@ -217,9 +202,7 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return users;
     }
 
-    /**
-     * Get specific template by User ID (For 1:1 Verification).
-     */
+
     public byte[] getTemplateByUserId(String userId) {
         SQLiteDatabase db = this.getReadableDatabase();
         byte[] template = null;
@@ -240,7 +223,6 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return template;
     }
 
-    // --- 3. DELETE FUNCTIONS ---
 
     public void clearDatabase() {
         try {
