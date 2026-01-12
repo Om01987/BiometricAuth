@@ -154,9 +154,9 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = null;
         try {
-
+            // Changed DESC to ASC here
             cursor = db.rawQuery("SELECT " + COL_USER_ID + ", " + COL_USER_NAME + ", " + COL_IMAGE_PATH +
-                    " FROM " + TABLE_FINGERPRINTS + " ORDER BY " + COL_CREATED_AT + " DESC", null);
+                    " FROM " + TABLE_FINGERPRINTS + " ORDER BY " + COL_CREATED_AT + " ASC", null);
 
             if (cursor.moveToFirst()) {
                 do {
@@ -174,7 +174,6 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         }
         return users;
     }
-
 
     public List<UserRecord> getAllUsersForMatching() {
         List<UserRecord> users = new ArrayList<>();

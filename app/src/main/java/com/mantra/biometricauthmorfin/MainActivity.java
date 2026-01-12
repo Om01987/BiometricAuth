@@ -183,13 +183,11 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
 
         btnDeleteOptions.setOnClickListener(v -> showDeleteOptionsDialog());
 
-        btnShowUsers.setOnClickListener(v -> {
 
-            Toast.makeText(this, "Show User List", Toast.LENGTH_SHORT).show();
+        btnShowUsers.setOnClickListener(v -> {
+            startActivity(new Intent(MainActivity.this, UserListActivity.class));
         });
     }
-
-
 
 
     @Override
