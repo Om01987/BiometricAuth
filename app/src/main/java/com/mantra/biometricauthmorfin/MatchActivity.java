@@ -1,30 +1,33 @@
 package com.mantra.biometricauthmorfin;
 
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.content.res.ColorStateList;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.mantra.morfinauth.MorfinAuth_Callback;
 import com.mantra.morfinauth.enums.DeviceDetection;
 import com.mantra.morfinauth.enums.TemplateFormat;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callback {
 
     private ImageView imgMatchPreview, btnBack;
-    private TextView txtMatchStatus, txtResultName, txtResultScore;
+    private TextView txtMatchStatus;
     private Button btnStartMatch;
+    private RecyclerView recyclerMatches;
 
     private BiometricManager bioManager;
     private FingerprintDatabaseHelper dbHelper;
@@ -32,6 +35,25 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     private boolean isCapturing = false;
     private int minQuality = 60;
     private int timeOut = 10000;
+
+    // Model class to hold match results
+    public static class MatchedUser implements Comparable<MatchedUser> {
+        String name;
+        String id;
+        int score;
+
+        public MatchedUser(String name, String id, int score) {
+            this.name = name;
+            this.id = id;
+            this.score = score;
+        }
+
+        @Override
+        public int compareTo(MatchedUser o) {
+            // Sort Descending by Score
+            return Integer.compare(o.score, this.score);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,9 +70,10 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         imgMatchPreview = findViewById(R.id.imgMatchPreview);
         btnBack = findViewById(R.id.btnBack);
         txtMatchStatus = findViewById(R.id.txtMatchStatus);
-        txtResultName = findViewById(R.id.txtResultName);
-        txtResultScore = findViewById(R.id.txtResultScore);
         btnStartMatch = findViewById(R.id.btnStartMatch);
+        recyclerMatches = findViewById(R.id.recyclerMatches);
+
+        recyclerMatches.setLayoutManager(new LinearLayoutManager(this));
 
         btnBack.setOnClickListener(v -> finish());
 
@@ -80,18 +103,18 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         isCapturing = true;
         btnStartMatch.setEnabled(false);
         txtMatchStatus.setText("Place Finger...");
-        txtResultName.setText("User: -");
-        txtResultScore.setText("Score: 0");
+
+        // Clear previous results
+        recyclerMatches.setAdapter(null);
 
         // Reset Preview
         imgMatchPreview.setImageResource(android.R.drawable.ic_menu_gallery);
         imgMatchPreview.setImageTintList(ColorStateList.valueOf(Color.LTGRAY));
 
         new Thread(() -> {
-            bioManager.getSDK().StopCapture(); // Ensure clean state
+            bioManager.getSDK().StopCapture();
             try { Thread.sleep(200); } catch (Exception e){}
 
-            // Using AutoCapture for match as it gives better quality feedback
             int[] qty = new int[1];
             int[] nfiq = new int[1];
 
@@ -99,7 +122,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
 
             if(ret == 0) {
                 runOnUiThread(() -> {
-                    txtMatchStatus.setText("Processing...");
+                    txtMatchStatus.setText("Processing Matches...");
                     processMatch(qty[0]);
                 });
             } else {
@@ -121,7 +144,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     private void processMatch(int quality) {
         new Thread(() -> {
             try {
-                // 1. Get Template of captured finger
+                // 1. Get Template
                 byte[] tempBuffer = new byte[2048];
                 int[] tSize = new int[1];
                 int ret = bioManager.getSDK().GetTemplate(tempBuffer, tSize, TemplateFormat.FMR_V2011);
@@ -137,7 +160,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                 byte[] capturedTemplate = new byte[tSize[0]];
                 System.arraycopy(tempBuffer, 0, capturedTemplate, 0, tSize[0]);
 
-                // 2. Fetch all users from DB
+                // 2. Fetch Users
                 List<FingerprintDatabaseHelper.UserRecord> users = dbHelper.getAllUsersForMatching();
 
                 if (users.isEmpty()) {
@@ -148,43 +171,33 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                     return;
                 }
 
-                // 3. Match Loop
-                boolean matchFound = false;
-                String matchedName = "";
-                int maxScore = 0;
+                // 3. Match ALL Users
+                List<MatchedUser> foundMatches = new ArrayList<>();
+                int threshold = 400; // --- UPDATED THRESHOLD TO 400 ---
 
                 for (FingerprintDatabaseHelper.UserRecord user : users) {
                     int[] score = new int[1];
                     int matchRet = bioManager.getSDK().MatchTemplate(capturedTemplate, user.template, score, TemplateFormat.FMR_V2011);
 
-                    if (matchRet == 0 && score[0] > maxScore) {
-                        maxScore = score[0];
-                        // Threshold for Match (Standard is often 600+)
-                        if (maxScore > 600) {
-                            matchFound = true;
-                            matchedName = user.userName;
-                            // Break immediately on high match for speed
-                            break;
-                        }
+                    if (matchRet == 0 && score[0] > threshold) {
+                        foundMatches.add(new MatchedUser(user.userName, user.userId, score[0]));
                     }
                 }
 
-                // 4. Update UI
-                boolean finalMatchFound = matchFound;
-                String finalName = matchedName;
-                int finalScore = maxScore;
+                // 4. Sort results (Best match first)
+                Collections.sort(foundMatches);
 
+                // 5. Update UI
                 runOnUiThread(() -> {
-                    if (finalMatchFound) {
-                        txtMatchStatus.setText("Access Granted");
-                        txtMatchStatus.setTextColor(Color.parseColor("#4CAF50")); // Green
-                        txtResultName.setText("User: " + finalName);
-                        txtResultScore.setText("Score: " + finalScore);
+                    if (!foundMatches.isEmpty()) {
+                        txtMatchStatus.setText("Found " + foundMatches.size() + " Matches");
+                        txtMatchStatus.setTextColor(Color.parseColor("#4CAF50"));
+
+                        MatchResultAdapter adapter = new MatchResultAdapter(foundMatches);
+                        recyclerMatches.setAdapter(adapter);
                     } else {
-                        txtMatchStatus.setText("Access Denied");
-                        txtMatchStatus.setTextColor(Color.parseColor("#F44336")); // Red
-                        txtResultName.setText("User: Not Found");
-                        txtResultScore.setText("Best Score: " + finalScore);
+                        txtMatchStatus.setText("No Matches Found");
+                        txtMatchStatus.setTextColor(Color.parseColor("#F44336"));
                     }
                     resetUI();
                 });
@@ -207,7 +220,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
             Bitmap bitmap = BitmapFactory.decodeByteArray(image, 0, image.length);
             runOnUiThread(() -> {
                 if (bitmap != null) {
-                    imgMatchPreview.setImageTintList(null); // Remove tint
+                    imgMatchPreview.setImageTintList(null);
                     imgMatchPreview.clearColorFilter();
                     imgMatchPreview.setImageBitmap(bitmap);
                 }
