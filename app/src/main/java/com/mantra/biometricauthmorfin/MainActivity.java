@@ -178,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
                 Toast.makeText(this, "Please INIT device first!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            Toast.makeText(this, "Match Screen (Coming Soon)", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(MainActivity.this, MatchActivity.class));
         });
 
         btnDeleteOptions.setOnClickListener(v -> showDeleteOptionsDialog());
@@ -188,6 +188,8 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
             Toast.makeText(this, "Show User List", Toast.LENGTH_SHORT).show();
         });
     }
+
+
 
 
     @Override

@@ -138,13 +138,12 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
 
         txtAutoId.setText(tempUserId);
 
-        // --- FIXED CANCEL LISTENER ---
+
         btnCancel.setOnClickListener(v -> {
             dialog.dismiss();
             stopRequested = true;
 
-            // FIX: Explicitly set isCapturing to false here.
-            // When coming from onSaveSuccess, isCapturing is true. We must reset it.
+
             isCapturing = false;
 
             updateButtons(false);
@@ -152,13 +151,13 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
             txtUserName.setText("Name: Waiting for Input");
 
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                // Now this check will pass because we set isCapturing = false above
+
                 if (!isCapturing) {
                     txtMessage.setText("Idle");
                 }
             }, 2000);
         });
-        // -----------------------------
+
 
         btnStart.setOnClickListener(v -> {
             String name = edtName.getText().toString().trim();
