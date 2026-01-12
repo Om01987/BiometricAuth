@@ -239,6 +239,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         isCapturing = false;
         updateButtons(false);
         txtMessage.setText("Stopped.");
+        txtMessage.setText("idle.");
     }
 
     private void updateButtons(boolean capturing) {
@@ -364,7 +365,7 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
             txtUserName.setText("Name: Waiting...");
             txtMessage.setText("User Saved. Next...");
 
-            // Reset preview to placeholder while waiting for next user
+
             imgFingerPreview.setImageResource(android.R.drawable.ic_menu_gallery);
             imgFingerPreview.setImageTintList(ColorStateList.valueOf(Color.LTGRAY));
 

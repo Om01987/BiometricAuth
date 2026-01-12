@@ -184,7 +184,7 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
         btnDeleteOptions.setOnClickListener(v -> showDeleteOptionsDialog());
 
         btnShowUsers.setOnClickListener(v -> {
-            // Placeholder for showing user list
+
             Toast.makeText(this, "Show User List", Toast.LENGTH_SHORT).show();
         });
     }
@@ -200,12 +200,12 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
                     txtConnectionStatus.setText("Connected (" + deviceName + ")");
 
                     if (bioManager.isReady()) {
-                        // Already init (unlikely on fresh connect, but possible with rapid replug)
+
                         txtBottomMessage.setText("Device Ready.");
                         btnInitDevice.setEnabled(false);
                         btnUninitDevice.setEnabled(true);
                     } else {
-                        // Connected, waiting for Init
+
                         txtBottomMessage.setText("Device found! Press INIT.");
                         btnInitDevice.setEnabled(true);
                         btnUninitDevice.setEnabled(false);
@@ -214,12 +214,12 @@ public class MainActivity extends AppCompatActivity implements MorfinAuth_Callba
                     txtConnectionStatus.setText("Unknown Device");
                 }
             } else {
-                // Disconnected
+
                 pendingModel = null;
-                setUIConnected(false); // Red
+                setUIConnected(false);
                 txtBottomMessage.setText("Device Disconnected.");
 
-                // Clear Details immediately
+
                 txtDeviceDetails.setText("Make: -\nModel: -\nSerial: -\nW/H: -");
                 btnInitDevice.setEnabled(false);
                 btnUninitDevice.setEnabled(false);
