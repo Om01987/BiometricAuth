@@ -1,6 +1,7 @@
 package com.mantra.biometricauthmorfin;
 
 import android.content.res.ColorStateList;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -37,7 +38,6 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     private int minQuality = 60;
     private int timeOut = 10000;
 
-    // List to hold current results so we can modify it on delete
     private List<MatchedUser> currentMatches = new ArrayList<>();
 
     public static class MatchedUser implements Comparable<MatchedUser> {
@@ -106,7 +106,6 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         btnStartMatch.setEnabled(false);
         txtMatchStatus.setText("Place Finger...");
 
-        // Clear previous data
         currentMatches.clear();
         recyclerMatches.setAdapter(null);
 
@@ -145,7 +144,9 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
 
     private void processMatch(int quality) {
         new Thread(() -> {
+            Cursor cursor = null;
             try {
+
                 byte[] tempBuffer = new byte[2048];
                 int[] tSize = new int[1];
                 int ret = bioManager.getSDK().GetTemplate(tempBuffer, tSize, TemplateFormat.FMR_V2011);
@@ -161,9 +162,10 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                 byte[] capturedTemplate = new byte[tSize[0]];
                 System.arraycopy(tempBuffer, 0, capturedTemplate, 0, tSize[0]);
 
-                List<FingerprintDatabaseHelper.UserRecord> users = dbHelper.getAllUsersForMatching();
 
-                if (users.isEmpty()) {
+                cursor = dbHelper.getUsersCursor();
+
+                if (cursor == null || cursor.getCount() == 0) {
                     runOnUiThread(() -> {
                         txtMatchStatus.setText("Database is Empty");
                         resetUI();
@@ -174,18 +176,26 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                 List<MatchedUser> foundMatches = new ArrayList<>();
                 int threshold = 400;
 
-                for (FingerprintDatabaseHelper.UserRecord user : users) {
+
+                int idxId = cursor.getColumnIndex(FingerprintDatabaseHelper.COL_USER_ID);
+                int idxName = cursor.getColumnIndex(FingerprintDatabaseHelper.COL_USER_NAME);
+                int idxTemplate = cursor.getColumnIndex(FingerprintDatabaseHelper.COL_TEMPLATE);
+
+
+                while (cursor.moveToNext()) {
+                    String userId = cursor.getString(idxId);
+                    String userName = cursor.getString(idxName);
+                    byte[] dbTemplate = cursor.getBlob(idxTemplate);
+
                     int[] score = new int[1];
-                    int matchRet = bioManager.getSDK().MatchTemplate(capturedTemplate, user.template, score, TemplateFormat.FMR_V2011);
+                    int matchRet = bioManager.getSDK().MatchTemplate(capturedTemplate, dbTemplate, score, TemplateFormat.FMR_V2011);
 
                     if (matchRet == 0 && score[0] > threshold) {
-                        foundMatches.add(new MatchedUser(user.userName, user.userId, score[0]));
+                        foundMatches.add(new MatchedUser(userName, userId, score[0]));
                     }
                 }
 
                 Collections.sort(foundMatches);
-
-
                 currentMatches = foundMatches;
 
                 runOnUiThread(() -> {
@@ -205,6 +215,11 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(this::resetUI);
+            } finally {
+
+                if (cursor != null) {
+                    cursor.close();
+                }
             }
         }).start();
     }
@@ -218,14 +233,11 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                     if (deleted) {
                         Toast.makeText(this, "Deleted: " + user.name, Toast.LENGTH_SHORT).show();
 
-
                         currentMatches.remove(user);
-
 
                         if (recyclerMatches.getAdapter() != null) {
                             recyclerMatches.getAdapter().notifyDataSetChanged();
                         }
-
 
                         if (currentMatches.isEmpty()) {
                             txtMatchStatus.setText("No Matches Remaining");

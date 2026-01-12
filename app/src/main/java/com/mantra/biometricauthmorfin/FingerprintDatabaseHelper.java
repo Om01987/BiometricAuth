@@ -209,6 +209,15 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return users;
     }
 
+
+
+    public Cursor getUsersCursor() {
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.rawQuery("SELECT " + COL_USER_ID + ", " + COL_USER_NAME + ", " + COL_TEMPLATE +
+                " FROM " + TABLE_FINGERPRINTS, null);
+    }
+
     public byte[] getTemplateByUserId(String userId) {
         SQLiteDatabase db = this.getReadableDatabase();
         byte[] template = null;
