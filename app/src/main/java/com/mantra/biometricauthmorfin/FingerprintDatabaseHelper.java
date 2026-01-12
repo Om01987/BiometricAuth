@@ -50,20 +50,20 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    // --- FIXED ID GENERATION ---
+
     public String getNextUserId() {
         SQLiteDatabase db = this.getReadableDatabase();
         int maxId = 0;
         Cursor cursor = null;
         try {
-            // Get all user IDs to find the highest number
+
             cursor = db.rawQuery("SELECT " + COL_USER_ID + " FROM " + TABLE_FINGERPRINTS, null);
             if (cursor.moveToFirst()) {
                 do {
-                    String uId = cursor.getString(0); // e.g., "USER_005"
+                    String uId = cursor.getString(0);
                     if (uId != null && uId.startsWith("USER_")) {
                         try {
-                            // Extract numeric part
+
                             String numPart = uId.substring(5);
                             int idVal = Integer.parseInt(numPart);
                             if (idVal > maxId) {
@@ -81,17 +81,17 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
             if (cursor != null) cursor.close();
             db.close();
         }
-        // Return max + 1
+
         return String.format("USER_%03d", maxId + 1);
     }
 
-    // --- DELETE FUNCTION ---
+
     public boolean deleteUser(String userId) {
         SQLiteDatabase db = this.getWritableDatabase();
         Cursor cursor = null;
         boolean success = false;
         try {
-            // 1. Get File Path first
+
             cursor = db.rawQuery("SELECT " + COL_IMAGE_PATH + " FROM " + TABLE_FINGERPRINTS + " WHERE " + COL_USER_ID + "=?", new String[]{userId});
             if (cursor.moveToFirst()) {
                 String path = cursor.getString(0);
@@ -103,7 +103,7 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
                 }
             }
 
-            // 2. Delete from DB
+
             int rows = db.delete(TABLE_FINGERPRINTS, COL_USER_ID + "=?", new String[]{userId});
             success = (rows > 0);
 
