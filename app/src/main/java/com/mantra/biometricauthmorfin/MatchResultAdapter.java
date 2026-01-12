@@ -11,9 +11,15 @@ import java.util.List;
 public class MatchResultAdapter extends RecyclerView.Adapter<MatchResultAdapter.ViewHolder> {
 
     private List<MatchActivity.MatchedUser> matches;
+    private OnMatchLongClickListener listener;
 
-    public MatchResultAdapter(List<MatchActivity.MatchedUser> matches) {
+    public interface OnMatchLongClickListener {
+        void onMatchLongClick(MatchActivity.MatchedUser user);
+    }
+
+    public MatchResultAdapter(List<MatchActivity.MatchedUser> matches, OnMatchLongClickListener listener) {
         this.matches = matches;
+        this.listener = listener;
     }
 
     @NonNull
@@ -29,6 +35,11 @@ public class MatchResultAdapter extends RecyclerView.Adapter<MatchResultAdapter.
         holder.txtName.setText(match.name);
         holder.txtId.setText(match.id);
         holder.txtScore.setText("Score: " + match.score);
+
+        holder.itemView.setOnLongClickListener(v -> {
+            if (listener != null) listener.onMatchLongClick(match);
+            return true;
+        });
     }
 
     @Override
@@ -38,7 +49,6 @@ public class MatchResultAdapter extends RecyclerView.Adapter<MatchResultAdapter.
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView txtName, txtId, txtScore;
-
         ViewHolder(View itemView) {
             super(itemView);
             txtName = itemView.findViewById(R.id.txtName);

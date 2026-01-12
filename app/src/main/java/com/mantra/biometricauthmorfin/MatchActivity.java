@@ -10,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -24,19 +25,22 @@ import java.util.List;
 
 public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callback {
 
+    // UI Components
     private ImageView imgMatchPreview, btnBack;
     private TextView txtMatchStatus;
     private Button btnStartMatch;
     private RecyclerView recyclerMatches;
 
+    // Helpers
     private BiometricManager bioManager;
     private FingerprintDatabaseHelper dbHelper;
 
+    // State Variables
     private boolean isCapturing = false;
     private int minQuality = 60;
     private int timeOut = 10000;
 
-
+    // Inner class for match results
     public static class MatchedUser implements Comparable<MatchedUser> {
         String name;
         String id;
@@ -50,7 +54,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
 
         @Override
         public int compareTo(MatchedUser o) {
-
+            // Sort Descending by Score (High to Low)
             return Integer.compare(o.score, this.score);
         }
     }
@@ -78,7 +82,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         btnBack.setOnClickListener(v -> finish());
 
         btnStartMatch.setOnClickListener(v -> {
-            if(!isCapturing) startCapture();
+            if (!isCapturing) startCapture();
         });
     }
 
@@ -86,7 +90,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     protected void onResume() {
         super.onResume();
         bioManager.setListener(this);
-        if(!bioManager.isReady()) {
+        if (!bioManager.isReady()) {
             Toast.makeText(this, "Device not ready", Toast.LENGTH_SHORT).show();
             finish();
         }
@@ -104,23 +108,25 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         btnStartMatch.setEnabled(false);
         txtMatchStatus.setText("Place Finger...");
 
-
+        // Clear previous results
         recyclerMatches.setAdapter(null);
 
-
+        // Reset Preview Icon
         imgMatchPreview.setImageResource(android.R.drawable.ic_menu_gallery);
         imgMatchPreview.setImageTintList(ColorStateList.valueOf(Color.LTGRAY));
 
         new Thread(() -> {
+            // Ensure any previous capture is stopped
             bioManager.getSDK().StopCapture();
             try { Thread.sleep(200); } catch (Exception e){}
 
             int[] qty = new int[1];
             int[] nfiq = new int[1];
 
+            // Start AutoCapture
             int ret = bioManager.getSDK().AutoCapture(minQuality, timeOut, qty, nfiq);
 
-            if(ret == 0) {
+            if (ret == 0) {
                 runOnUiThread(() -> {
                     txtMatchStatus.setText("Processing Matches...");
                     processMatch(qty[0]);
@@ -135,7 +141,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     }
 
     private void stopCapture() {
-        if(isCapturing) {
+        if (isCapturing) {
             new Thread(() -> bioManager.getSDK().StopCapture()).start();
             isCapturing = false;
         }
@@ -144,7 +150,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
     private void processMatch(int quality) {
         new Thread(() -> {
             try {
-
+                // 1. Extract Template from captured data
                 byte[] tempBuffer = new byte[2048];
                 int[] tSize = new int[1];
                 int ret = bioManager.getSDK().GetTemplate(tempBuffer, tSize, TemplateFormat.FMR_V2011);
@@ -160,7 +166,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                 byte[] capturedTemplate = new byte[tSize[0]];
                 System.arraycopy(tempBuffer, 0, capturedTemplate, 0, tSize[0]);
 
-
+                // 2. Fetch all users from Database
                 List<FingerprintDatabaseHelper.UserRecord> users = dbHelper.getAllUsersForMatching();
 
                 if (users.isEmpty()) {
@@ -171,33 +177,35 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                     return;
                 }
 
-
+                // 3. Match against ALL users
                 List<MatchedUser> foundMatches = new ArrayList<>();
-                int threshold = 400;
+                int threshold = 400; // Score threshold
 
                 for (FingerprintDatabaseHelper.UserRecord user : users) {
                     int[] score = new int[1];
                     int matchRet = bioManager.getSDK().MatchTemplate(capturedTemplate, user.template, score, TemplateFormat.FMR_V2011);
 
+                    // If match is successful and score > threshold, add to list
                     if (matchRet == 0 && score[0] > threshold) {
                         foundMatches.add(new MatchedUser(user.userName, user.userId, score[0]));
                     }
                 }
 
-
+                // 4. Sort results (Highest score first)
                 Collections.sort(foundMatches);
 
-
+                // 5. Update UI
                 runOnUiThread(() -> {
                     if (!foundMatches.isEmpty()) {
                         txtMatchStatus.setText("Found " + foundMatches.size() + " Matches");
-                        txtMatchStatus.setTextColor(Color.parseColor("#4CAF50"));
+                        txtMatchStatus.setTextColor(Color.parseColor("#4CAF50")); // Green
 
-                        MatchResultAdapter adapter = new MatchResultAdapter(foundMatches);
+                        // Set Adapter with Delete Listener
+                        MatchResultAdapter adapter = new MatchResultAdapter(foundMatches, this::showDeleteDialog);
                         recyclerMatches.setAdapter(adapter);
                     } else {
                         txtMatchStatus.setText("No Matches Found");
-                        txtMatchStatus.setTextColor(Color.parseColor("#F44336"));
+                        txtMatchStatus.setTextColor(Color.parseColor("#F44336")); // Red
                     }
                     resetUI();
                 });
@@ -207,6 +215,27 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
                 runOnUiThread(this::resetUI);
             }
         }).start();
+    }
+
+    // --- Delete Dialog Logic ---
+    private void showDeleteDialog(MatchedUser user) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete User")
+                .setMessage("Do you want to delete " + user.name + " (" + user.id + ")?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    boolean deleted = dbHelper.deleteUser(user.id);
+                    if (deleted) {
+                        Toast.makeText(this, "Deleted. Re-scan to update list.", Toast.LENGTH_SHORT).show();
+
+                        // Clear the list immediately to reflect deletion
+                        recyclerMatches.setAdapter(null);
+                        txtMatchStatus.setText("User Deleted. Please Scan Again.");
+                    } else {
+                        Toast.makeText(this, "Delete Failed", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void resetUI() {
@@ -220,7 +249,7 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
             Bitmap bitmap = BitmapFactory.decodeByteArray(image, 0, image.length);
             runOnUiThread(() -> {
                 if (bitmap != null) {
-                    imgMatchPreview.setImageTintList(null);
+                    imgMatchPreview.setImageTintList(null); // Remove gray tint
                     imgMatchPreview.clearColorFilter();
                     imgMatchPreview.setImageBitmap(bitmap);
                 }
@@ -228,9 +257,15 @@ public class MatchActivity extends AppCompatActivity implements MorfinAuth_Callb
         }
     }
 
-    @Override public void OnDeviceDetection(String s, DeviceDetection d) {
-        if(d == DeviceDetection.DISCONNECTED) finish();
+    @Override
+    public void OnDeviceDetection(String s, DeviceDetection d) {
+        if (d == DeviceDetection.DISCONNECTED) {
+            finish();
+            Toast.makeText(this, "Device Disconnected", Toast.LENGTH_SHORT).show();
+        }
     }
+
+    // Unused callbacks
     @Override public void OnComplete(int i, int i1, int i2) {}
     @Override public void OnFingerPosition(int i, int i1) {}
 }

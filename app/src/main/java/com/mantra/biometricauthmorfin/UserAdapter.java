@@ -4,18 +4,22 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
 import java.util.List;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
 
     private List<FingerprintDatabaseHelper.UserRecord> userList;
+    private OnUserLongClickListener longClickListener;
 
-    public UserAdapter(List<FingerprintDatabaseHelper.UserRecord> userList) {
+    public interface OnUserLongClickListener {
+        void onUserLongClick(FingerprintDatabaseHelper.UserRecord user);
+    }
+
+    public UserAdapter(List<FingerprintDatabaseHelper.UserRecord> userList, OnUserLongClickListener listener) {
         this.userList = userList;
+        this.longClickListener = listener;
     }
 
     @NonNull
@@ -28,12 +32,16 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
     @Override
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         FingerprintDatabaseHelper.UserRecord user = userList.get(position);
-
         holder.txtUserId.setText(user.userId);
+        holder.txtUserName.setText((user.userName != null && !user.userName.isEmpty()) ? user.userName : "No Name");
 
-        holder.txtUserName.setText(
-                (user.userName != null && !user.userName.isEmpty()) ? user.userName : "No Name"
-        );
+        // Long click listener
+        holder.itemView.setOnLongClickListener(v -> {
+            if (longClickListener != null) {
+                longClickListener.onUserLongClick(user);
+            }
+            return true; // Consume event
+        });
     }
 
     @Override

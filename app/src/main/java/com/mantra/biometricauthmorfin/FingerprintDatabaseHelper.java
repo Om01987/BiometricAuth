@@ -14,12 +14,9 @@ import java.util.List;
 public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "fingerprint_auth.db";
-
     private static final int DB_VERSION = 2;
 
     public static final String TABLE_FINGERPRINTS = "fingerprints";
-
-
     public static final String COL_ID = "id";
     public static final String COL_USER_ID = "user_id";
     public static final String COL_USER_NAME = "user_name";
@@ -35,8 +32,6 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        Log.d("DB", "Creating fingerprints table...");
-
         String createTable = "CREATE TABLE " + TABLE_FINGERPRINTS + " (" +
                 COL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 COL_USER_ID + " TEXT UNIQUE NOT NULL, " +
@@ -46,38 +41,80 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
                 COL_QUALITY + " INTEGER, " +
                 COL_NFIQ + " INTEGER, " +
                 COL_CREATED_AT + " DATETIME DEFAULT CURRENT_TIMESTAMP)";
-
         db.execSQL(createTable);
-        Log.d("DB", "Fingerprints table created");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_FINGERPRINTS);
         onCreate(db);
     }
 
-
+    // --- FIXED ID GENERATION ---
     public String getNextUserId() {
         SQLiteDatabase db = this.getReadableDatabase();
-        String nextId = "USER_001";
+        int maxId = 0;
         Cursor cursor = null;
         try {
-            cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_FINGERPRINTS, null);
+            // Get all user IDs to find the highest number
+            cursor = db.rawQuery("SELECT " + COL_USER_ID + " FROM " + TABLE_FINGERPRINTS, null);
             if (cursor.moveToFirst()) {
-                int count = cursor.getInt(0);
-                nextId = String.format("USER_%03d", count + 1);
+                do {
+                    String uId = cursor.getString(0); // e.g., "USER_005"
+                    if (uId != null && uId.startsWith("USER_")) {
+                        try {
+                            // Extract numeric part
+                            String numPart = uId.substring(5);
+                            int idVal = Integer.parseInt(numPart);
+                            if (idVal > maxId) {
+                                maxId = idVal;
+                            }
+                        } catch (NumberFormatException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                } while (cursor.moveToNext());
             }
         } catch (Exception e) {
-            Log.e("DB", "Error generating ID", e);
+            Log.e("DB", "Error calculating next ID", e);
         } finally {
             if (cursor != null) cursor.close();
             db.close();
         }
-        return nextId;
+        // Return max + 1
+        return String.format("USER_%03d", maxId + 1);
     }
 
+    // --- DELETE FUNCTION ---
+    public boolean deleteUser(String userId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        Cursor cursor = null;
+        boolean success = false;
+        try {
+            // 1. Get File Path first
+            cursor = db.rawQuery("SELECT " + COL_IMAGE_PATH + " FROM " + TABLE_FINGERPRINTS + " WHERE " + COL_USER_ID + "=?", new String[]{userId});
+            if (cursor.moveToFirst()) {
+                String path = cursor.getString(0);
+                if (path != null) {
+                    File file = new File(path);
+                    if (file.exists()) {
+                        file.delete();
+                    }
+                }
+            }
+
+            // 2. Delete from DB
+            int rows = db.delete(TABLE_FINGERPRINTS, COL_USER_ID + "=?", new String[]{userId});
+            success = (rows > 0);
+
+        } catch (Exception e) {
+            Log.e("DB", "Error deleting user", e);
+        } finally {
+            if (cursor != null) cursor.close();
+            db.close();
+        }
+        return success;
+    }
 
     public boolean saveFingerprint(String userId, String name, String imagePath, byte[] template, int quality, int nfiq) {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -89,24 +126,14 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
             values.put(COL_TEMPLATE, template);
             values.put(COL_QUALITY, quality);
             values.put(COL_NFIQ, nfiq);
-
             long result = db.insert(TABLE_FINGERPRINTS, null, values);
             db.close();
-
-            if (result != -1) {
-                Log.d("DB", "Saved: " + userId + " (" + name + ")");
-                return true;
-            } else {
-                Log.e("DB", "Failed to save fingerprint");
-                return false;
-            }
+            return result != -1;
         } catch (Exception e) {
-            Log.e("DB", "Error saving fingerprint", e);
             db.close();
             return false;
         }
     }
-
 
     public int getUserCount() {
         int count = 0;
@@ -114,11 +141,7 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         Cursor cursor = null;
         try {
             cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_FINGERPRINTS, null);
-            if (cursor.moveToFirst()) {
-                count = cursor.getInt(0);
-            }
-        } catch (Exception e) {
-            Log.e("DB", "Error counting users", e);
+            if (cursor.moveToFirst()) count = cursor.getInt(0);
         } finally {
             if (cursor != null) cursor.close();
             db.close();
@@ -126,13 +149,11 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
 
-
     public static class UserRecord {
         public String userId;
         public String userName;
         public String imagePath;
         public byte[] template;
-
 
         public UserRecord(String id, String name, String path, byte[] temp) {
             this.userId = id;
@@ -140,8 +161,6 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
             this.imagePath = path;
             this.template = temp;
         }
-
-
         public UserRecord(String id, String name, String path) {
             this.userId = id;
             this.userName = name;
@@ -154,16 +173,12 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = null;
         try {
-            // Changed DESC to ASC here
             cursor = db.rawQuery("SELECT " + COL_USER_ID + ", " + COL_USER_NAME + ", " + COL_IMAGE_PATH +
                     " FROM " + TABLE_FINGERPRINTS + " ORDER BY " + COL_CREATED_AT + " ASC", null);
 
             if (cursor.moveToFirst()) {
                 do {
-                    String id = cursor.getString(0);
-                    String name = cursor.getString(1);
-                    String path = cursor.getString(2);
-                    users.add(new UserRecord(id, name, path));
+                    users.add(new UserRecord(cursor.getString(0), cursor.getString(1), cursor.getString(2)));
                 } while (cursor.moveToNext());
             }
         } catch (Exception e) {
@@ -182,18 +197,11 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         try {
             cursor = db.rawQuery("SELECT " + COL_USER_ID + ", " + COL_USER_NAME + ", " + COL_IMAGE_PATH + ", " + COL_TEMPLATE +
                     " FROM " + TABLE_FINGERPRINTS, null);
-
             if (cursor.moveToFirst()) {
                 do {
-                    String id = cursor.getString(0);
-                    String name = cursor.getString(1);
-                    String path = cursor.getString(2);
-                    byte[] template = cursor.getBlob(3);
-                    users.add(new UserRecord(id, name, path, template));
+                    users.add(new UserRecord(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getBlob(3)));
                 } while (cursor.moveToNext());
             }
-        } catch (Exception e) {
-            Log.e("DB", "Error fetching users for match", e);
         } finally {
             if (cursor != null) cursor.close();
             db.close();
@@ -201,20 +209,13 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return users;
     }
 
-
     public byte[] getTemplateByUserId(String userId) {
         SQLiteDatabase db = this.getReadableDatabase();
         byte[] template = null;
         Cursor cursor = null;
         try {
-            String query = "SELECT " + COL_TEMPLATE + " FROM " + TABLE_FINGERPRINTS + " WHERE " + COL_USER_ID + " = ?";
-            cursor = db.rawQuery(query, new String[]{userId});
-
-            if (cursor != null && cursor.moveToFirst()) {
-                template = cursor.getBlob(0);
-            }
-        } catch (Exception e) {
-            Log.e("DB", "Error fetching template for user: " + userId, e);
+            cursor = db.rawQuery("SELECT " + COL_TEMPLATE + " FROM " + TABLE_FINGERPRINTS + " WHERE " + COL_USER_ID + " = ?", new String[]{userId});
+            if (cursor != null && cursor.moveToFirst()) template = cursor.getBlob(0);
         } finally {
             if (cursor != null) cursor.close();
             db.close();
@@ -222,33 +223,18 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
         return template;
     }
 
-
     public void clearDatabase() {
-        try {
-            SQLiteDatabase db = this.getWritableDatabase();
-            db.delete(TABLE_FINGERPRINTS, null, null);
-            db.close();
-            Log.d("DB", "Database Table Cleared");
-        } catch (Exception e) {
-            Log.e("DB", "Error clearing DB", e);
-        }
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_FINGERPRINTS, null, null);
+        db.close();
     }
 
     public void clearSavedFiles(String folderPath) {
         if (folderPath == null) return;
-        try {
-            File dir = new File(folderPath);
-            if (dir.exists() && dir.isDirectory()) {
-                File[] files = dir.listFiles();
-                if (files != null) {
-                    for (File file : files) {
-                        file.delete();
-                    }
-                }
-            }
-            Log.d("DB", "Files Cleared from: " + folderPath);
-        } catch (Exception e) {
-            Log.e("DB", "Error clearing files", e);
+        File dir = new File(folderPath);
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles();
+            if (files != null) for (File file : files) file.delete();
         }
     }
 
