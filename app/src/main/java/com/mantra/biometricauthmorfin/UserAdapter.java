@@ -3,6 +3,7 @@ package com.mantra.biometricauthmorfin;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -11,15 +12,16 @@ import java.util.List;
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
 
     private List<FingerprintDatabaseHelper.UserRecord> userList;
-    private OnUserLongClickListener longClickListener;
+    private OnUserActionListener actionListener;
 
-    public interface OnUserLongClickListener {
-        void onUserLongClick(FingerprintDatabaseHelper.UserRecord user);
+    public interface OnUserActionListener {
+        void onUserLongClick(FingerprintDatabaseHelper.UserRecord user); // For Delete
+        void onUserEditClick(FingerprintDatabaseHelper.UserRecord user); // For Rename
     }
 
-    public UserAdapter(List<FingerprintDatabaseHelper.UserRecord> userList, OnUserLongClickListener listener) {
+    public UserAdapter(List<FingerprintDatabaseHelper.UserRecord> userList, OnUserActionListener listener) {
         this.userList = userList;
-        this.longClickListener = listener;
+        this.actionListener = listener;
     }
 
     @NonNull
@@ -35,12 +37,19 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         holder.txtUserId.setText(user.userId);
         holder.txtUserName.setText((user.userName != null && !user.userName.isEmpty()) ? user.userName : "No Name");
 
-        // Long click listener
+        // 1. Long Press on Card -> Delete
         holder.itemView.setOnLongClickListener(v -> {
-            if (longClickListener != null) {
-                longClickListener.onUserLongClick(user);
+            if (actionListener != null) {
+                actionListener.onUserLongClick(user);
             }
-            return true; // Consume event
+            return true;
+        });
+
+        // 2. Click on Edit Icon -> Rename
+        holder.btnEdit.setOnClickListener(v -> {
+            if (actionListener != null) {
+                actionListener.onUserEditClick(user);
+            }
         });
     }
 
@@ -51,11 +60,13 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
 
     static class UserViewHolder extends RecyclerView.ViewHolder {
         TextView txtUserId, txtUserName;
+        ImageView btnEdit;
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
             txtUserId = itemView.findViewById(R.id.txtUserId);
             txtUserName = itemView.findViewById(R.id.txtUserName);
+            btnEdit = itemView.findViewById(R.id.btnEditUser);
         }
     }
 }

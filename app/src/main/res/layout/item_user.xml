@@ -13,34 +13,50 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:paddingVertical="16dp"
+        android:paddingHorizontal="16dp"
+        android:gravity="center_vertical"
+        android:weightSum="10">
 
         <TextView
             android:id="@+id/txtUserId"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="3.5"
             android:text="USER_001"
             android:textColor="@color/mantra_primary"
             android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="15sp" />
 
         <View
             android:layout_width="1dp"
             android:layout_height="16dp"
             android:background="#E2E8F0"
-            android:layout_marginHorizontal="12dp"/>
+            android:layout_marginEnd="12dp"/>
 
         <TextView
             android:id="@+id/txtUserName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="5.5"
             android:text="John Doe"
             android:textColor="#334155"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:maxLines="1"
             android:ellipsize="end"/>
+
+        <ImageView
+            android:id="@+id/btnEditUser"
+            android:layout_width="0dp"
+            android:layout_height="24dp"
+            android:layout_weight="1"
+            android:src="@android:drawable/ic_menu_edit"
+            app:tint="#94A3B8"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Edit Name"
+            android:scaleType="centerInside"/>
 
     </LinearLayout>
 

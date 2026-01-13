@@ -218,6 +218,20 @@ public class FingerprintDatabaseHelper extends SQLiteOpenHelper {
                 " FROM " + TABLE_FINGERPRINTS, null);
     }
 
+
+
+    public boolean updateUserName(String userId, String newName) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_USER_NAME, newName);
+
+
+        int rows = db.update(TABLE_FINGERPRINTS, values, COL_USER_ID + " = ?", new String[]{userId});
+        db.close();
+
+        return rows > 0;
+    }
+
     public byte[] getTemplateByUserId(String userId) {
         SQLiteDatabase db = this.getReadableDatabase();
         byte[] template = null;
