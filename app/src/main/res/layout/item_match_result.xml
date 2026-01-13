@@ -5,22 +5,23 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="8dp"
     android:layout_marginVertical="4dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="2dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="3dp"
     app:cardBackgroundColor="@color/white">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:padding="16dp"
         android:gravity="center_vertical">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingEnd="8dp">
 
             <TextView
                 android:id="@+id/txtName"
@@ -29,7 +30,9 @@
                 android:text="User Name"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="#333333"/>
+                android:textColor="#1E293B"
+                android:maxLines="1"
+                android:ellipsize="end"/>
 
             <TextView
                 android:id="@+id/txtId"
@@ -37,20 +40,44 @@
                 android:layout_height="wrap_content"
                 android:text="ID: USER_001"
                 android:textSize="12sp"
-                android:textColor="#666666"/>
+                android:textColor="#64748B"
+                android:layout_marginTop="2dp"/>
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/txtScore"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Score: 1200"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textColor="@color/mantra_primary"
-            android:background="#E0F2F1"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"/>
+            android:orientation="vertical"
+            android:gravity="end"
+            android:minWidth="70dp">
+
+            <TextView
+                android:id="@+id/txtPercentage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="92%"
+                android:textColor="@color/mantra_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtScore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Score: 920"
+                android:textSize="10sp"
+                android:textColor="#94A3B8"
+                android:layout_marginBottom="4dp"/>
+
+            <ProgressBar
+                android:id="@+id/progressScore"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="70dp"
+                android:layout_height="4dp"
+                android:max="1000"
+                android:progress="920"
+                android:progressTint="@color/mantra_primary"/>
+        </LinearLayout>
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>
