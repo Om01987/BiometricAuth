@@ -15,10 +15,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.material.bottomsheet.BottomSheetDialog; // Import added
 import com.mantra.morfinauth.MorfinAuth_Callback;
 import com.mantra.morfinauth.enums.DeviceDetection;
 import com.mantra.morfinauth.enums.ImageFormat;
@@ -122,42 +122,40 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         });
     }
 
+    // --- REPLACED WITH BOTTOM SHEET ---
     private void showUserDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        LayoutInflater inflater = this.getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_user_input, null);
-        builder.setView(dialogView);
-        AlertDialog dialog = builder.create();
-        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        dialog.setCancelable(false);
+        // Use BottomSheetDialog instead of AlertDialog
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
 
-        TextView txtAutoId = dialogView.findViewById(R.id.txtDialogUserId);
-        EditText edtName = dialogView.findViewById(R.id.edtDialogUserName);
-        Button btnCancel = dialogView.findViewById(R.id.btnDialogCancel);
-        Button btnStart = dialogView.findViewById(R.id.btnDialogStart);
+        // Inflate the new layout
+        View view = getLayoutInflater().inflate(R.layout.layout_bottom_sheet_enroll, null);
+        bottomSheet.setContentView(view);
+        bottomSheet.setCancelable(false); // Force user to choose
+
+        TextView txtAutoId = view.findViewById(R.id.txtDialogUserId);
+        EditText edtName = view.findViewById(R.id.edtDialogUserName);
+        Button btnCancel = view.findViewById(R.id.btnDialogCancel);
+        Button btnStart = view.findViewById(R.id.btnDialogStart);
 
         txtAutoId.setText(tempUserId);
 
+        // Auto-focus keyboard for better UX
+        edtName.requestFocus();
 
         btnCancel.setOnClickListener(v -> {
-            dialog.dismiss();
+            bottomSheet.dismiss();
             stopRequested = true;
-
-
             isCapturing = false;
-
             updateButtons(false);
             txtMessage.setText("Enrollment stopped");
             txtUserName.setText("Name: Waiting for Input");
 
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-
                 if (!isCapturing) {
                     txtMessage.setText("Idle");
                 }
             }, 2000);
         });
-
 
         btnStart.setOnClickListener(v -> {
             String name = edtName.getText().toString().trim();
@@ -170,12 +168,13 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
             txtUserId.setText("User ID: " + tempUserId);
 
             stopRequested = false;
-            dialog.dismiss();
+            bottomSheet.dismiss();
             prepareAndStartCapture();
         });
 
-        dialog.show();
+        bottomSheet.show();
     }
+    // ----------------------------------
 
     private void prepareAndStartCapture() {
         if (!bioManager.isReady()) return;
