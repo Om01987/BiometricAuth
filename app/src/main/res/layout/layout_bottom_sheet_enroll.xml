@@ -1,88 +1,144 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="@color/white">
+    android:background="@drawable/bg_bottom_sheet"
+    android:paddingBottom="24dp">
+
+    <View
+        android:id="@+id/drag_handle"
+        android:layout_width="48dp"
+        android:layout_height="4dp"
+        android:layout_marginTop="12dp"
+        android:background="#E2E8F0"
+        android:backgroundTint="#CBD5E1"
+        android:alpha="0.8"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
+        android:id="@+id/lblTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="New Enrollment"
-        android:textSize="20sp"
+        android:textColor="#1E293B"
+        android:textSize="22sp"
         android:textStyle="bold"
-        android:textColor="#334155"
-        android:layout_marginBottom="16dp"/>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:background="#F1F5F9"
-        android:padding="12dp"
-        android:layout_marginBottom="16dp"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="User ID:"
-            android:textColor="#64748B"/>
-
-        <TextView
-            android:id="@+id/txtDialogUserId"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="USER_001"
-            android:textColor="#334155"
-            android:textStyle="bold"
-            android:layout_marginStart="8dp"/>
-    </LinearLayout>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/drag_handle" />
 
     <TextView
+        android:id="@+id/lblSub"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Enter Name"
+        android:layout_marginTop="4dp"
+        android:text="Enter details to start scanning"
         android:textColor="#64748B"
-        android:textSize="12sp"
-        android:layout_marginBottom="4dp"/>
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/lblTitle" />
 
-    <EditText
-        android:id="@+id/edtDialogUserName"
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardUserId"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        app:cardBackgroundColor="#F1F5F9"
+        app:cardCornerRadius="50dp"
+        app:cardElevation="0dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/lblSub">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ID ASSIGNED:"
+                android:textColor="#64748B"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtDialogUserId"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="USER_001"
+                android:textColor="@color/mantra_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/inputLayoutName"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:background="#F8FAFC"
-        android:paddingHorizontal="12dp"
-        android:hint="e.g. Om kumar"
-        android:inputType="textPersonName"
-        android:textColor="#334155"
-        android:layout_marginBottom="24dp"/>
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="24dp"
+        android:hint="Full Name"
+        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxCornerRadiusBottomStart="12dp"
+        app:boxCornerRadiusTopEnd="12dp"
+        app:boxCornerRadiusTopStart="12dp"
+        app:boxStrokeColor="@color/mantra_primary"
+        app:startIconDrawable="@android:drawable/ic_menu_myplaces"
+        app:layout_constraintTop_toBottomOf="@id/cardUserId">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edtDialogUserName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPersonName|textCapWords"
+            android:maxLines="1"
+            android:textColor="#334155" />
+    </com.google.android.material.textfield.TextInputLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="32dp"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/inputLayoutName">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDialogCancel"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="60dp"
             android:layout_weight="1"
             android:text="Cancel"
-            android:backgroundTint="#F1F5F9"
             android:textColor="#64748B"
-            android:layout_marginEnd="8dp"/>
+            app:cornerRadius="12dp" />
 
-        <Button
+        <Space
+            android:layout_width="16dp"
+            android:layout_height="wrap_content" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDialogStart"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Start Enrollment"
+            android:layout_height="60dp"
+            android:layout_weight="1.5"
             android:backgroundTint="@color/mantra_accent"
+            android:text="Start Scan"
             android:textColor="@color/white"
-            android:layout_marginStart="8dp"/>
+            app:cornerRadius="12dp"
+            app:elevation="4dp" />
     </LinearLayout>
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

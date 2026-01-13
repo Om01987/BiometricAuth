@@ -122,16 +122,21 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
         });
     }
 
-    // --- REPLACED WITH BOTTOM SHEET ---
-    private void showUserDialog() {
-        // Use BottomSheetDialog instead of AlertDialog
-        BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
 
-        // Inflate the new layout
+    private void showUserDialog() {
+
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(this, com.google.android.material.R.style.Theme_Design_BottomSheetDialog);
         View view = getLayoutInflater().inflate(R.layout.layout_bottom_sheet_enroll, null);
         bottomSheet.setContentView(view);
-        bottomSheet.setCancelable(false); // Force user to choose
 
+
+        if (bottomSheet.getWindow() != null) {
+            bottomSheet.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        bottomSheet.setCancelable(false);
+
+        // Bind Views
         TextView txtAutoId = view.findViewById(R.id.txtDialogUserId);
         EditText edtName = view.findViewById(R.id.edtDialogUserName);
         Button btnCancel = view.findViewById(R.id.btnDialogCancel);
@@ -139,9 +144,10 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
 
         txtAutoId.setText(tempUserId);
 
-        // Auto-focus keyboard for better UX
+        // Auto-focus logic
         edtName.requestFocus();
 
+        // Listeners remain the same...
         btnCancel.setOnClickListener(v -> {
             bottomSheet.dismiss();
             stopRequested = true;
@@ -151,15 +157,14 @@ public class EnrollmentActivity extends AppCompatActivity implements MorfinAuth_
             txtUserName.setText("Name: Waiting for Input");
 
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (!isCapturing) {
-                    txtMessage.setText("Idle");
-                }
+                if (!isCapturing) txtMessage.setText("Idle");
             }, 2000);
         });
 
         btnStart.setOnClickListener(v -> {
             String name = edtName.getText().toString().trim();
             if (name.isEmpty()) {
+                // Use TextInputLayout error if possible, or Toast
                 Toast.makeText(this, "Enter name", Toast.LENGTH_SHORT).show();
                 return;
             }
